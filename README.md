@@ -11,6 +11,11 @@ These instances allow you to use the generic derivation mechanisms provided by l
 [Circe][circe] or [scalacheck-shapeless][scalacheck-shapeless] to generate boilerplate-free
 type class instances for your Scrooge types.
 
+Note that this library does not bring its own runtime dependency on either Scrooge or
+[libthrift][thrift], and the macros provided here have been used on a range of Scrooge versions,
+from 4.6.0 to 18.2.0. Currently only a single (recent) Scrooge version is being tested and
+supported, but this may change in the future.
+
 ## History
 
 This library is based on a [demonstration project][shapes-demo] written by
@@ -62,7 +67,56 @@ res0: io.circe.Json =
 ```
 
 See the `GenericInstancesTest` test suite for more details about the representations used for these
-types.
+types. In particular note that if you're working with a Thrift union, you may need to provide
+instances of your target type class for `TFieldBlob` explicitly. For example, if you want to want to
+use Circe's generic derivation with a union like this:
+
+```thrift
+namespace java com.stripe.scrooge.shapes
+
+struct StructExample {
+  1: required string foo
+  2: optional string bar
+}
+
+union UnionExample {
+  1: StructExample a
+  2: i32 b
+  3: string c
+}
+```
+
+You will need some utility code like the following:
+
+```scala
+import io.circe.Encoder, io.circe.scodec._, io.circe.syntax._
+import com.twitter.scrooge.TFieldBlob, scodec.bits.ByteVector
+
+implicit val encodeTFieldBlob: Encoder[TFieldBlob] =
+  Encoder.instance(blob => ByteVector(blob.data).asJson)
+```
+
+This will allow you to derive `Encoder` and `Decoder` types for `UnionExample`:
+
+```scala
+import com.stripe.scrooge.shapes._, io.circe.generic.auto._
+
+scala> val ex: UnionExample = UnionExample.A(StructExample("abc", Some("123")))
+ex: com.stripe.scrooge.shapes.UnionExample = A(StructExample(abc,Some(123)))
+
+scala> ex.asJson
+res0: io.circe.Json =
+{
+  "A" : {
+    "foo" : "abc",
+    "bar" : "123"
+  }
+}
+```
+
+Without the `TFieldBlob` encoder, Circe would not know how to encode the
+`UnknownUnionField` disjunct that is included in Scrooge's representation of
+every union, and its generic derivation would fail to compile.
 
 ## License
 
