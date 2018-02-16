@@ -31,7 +31,7 @@ val allSettings = baseSettings ++ publishSettings
 
 val docMappingsApiDir = settingKey[String]("Subdirectory in site target directory for API docs")
 
-val root = project.in(file(".")).dependsOn(core).aggregate(core)
+val root = project.in(file(".")).settings(noPublishSettings).dependsOn(core).aggregate(core)
 
 lazy val core = project
   .settings(allSettings)
@@ -80,6 +80,12 @@ lazy val publishSettings = Seq(
       url("https://twitter.com/travisbrown")
     )
   )
+)
+
+lazy val noPublishSettings = Seq(
+  publish := {},
+  publishLocal := {},
+  publishArtifact := false
 )
 
 credentials ++= (
