@@ -31,7 +31,11 @@ val allSettings = baseSettings ++ publishSettings
 
 val docMappingsApiDir = settingKey[String]("Subdirectory in site target directory for API docs")
 
-val root = project.in(file(".")).settings(noPublishSettings).dependsOn(core).aggregate(core)
+val root = project.in(file("."))
+  .settings(allSettings)
+  .settings(noPublishSettings)
+  .dependsOn(core)
+  .aggregate(core)
 
 lazy val core = project
   .settings(allSettings)
